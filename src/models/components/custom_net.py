@@ -14,15 +14,17 @@ class CustomNet(nn.Module):
         :param num_classes: The number of output features of the final linear layer.
         """
         super().__init__()
+        
+        self.num_classes = num_classes
 
         if img_pretrained is None:
             self.name_pretrained = img_pretrained
         else:
-            self.name_pretrained = 'efficientnet_b7'
+            self.name_pretrained = 'resnet34'
 
-        self.pretrained_model = models.get_model(name=self.name_pretrained, weights="DEFAULT")
-
-        self.linear_layer = nn.Linear(1000, num_classes)
+        self.backbone = models.get_model(name=self.name_pretrained, weights="DEFAULT")
+        
+        self.linear_layer = nn.Linear(1000, self.num_classes)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Perform a single forward pass through the network.
@@ -30,7 +32,7 @@ class CustomNet(nn.Module):
         :param x: The input tensor.
         :return: A tensor of predictions.
         """
-        return self.linear_layer(self.pretrained_model(x))
+        return self.linear_layer(self.backbone(x))
     
 
 if __name__ == "__main__":
