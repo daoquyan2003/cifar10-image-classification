@@ -16,7 +16,7 @@ scheduler:
 net:
   _target_: src.models.components.custom_net.CustomNet
   num_classes: 10
-  img_pretrained: "efficientnet_b7"
+  name_pretrained: "efficientnet_b7"
 
 # compile model for faster training with pytorch 2.0
 compile: false

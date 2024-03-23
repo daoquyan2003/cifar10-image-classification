@@ -7,7 +7,7 @@ class CustomNet(nn.Module):
 
     def __init__(self, 
                  num_classes: int = 10,
-                 img_pretrained: str = None,
+                 name_pretrained: str = None,
     ) -> None:
         """Initialize a `CustomNet` module.
 
@@ -17,8 +17,8 @@ class CustomNet(nn.Module):
         
         self.num_classes = num_classes
 
-        if img_pretrained is not None:
-            self.name_pretrained = img_pretrained
+        if name_pretrained is not None:
+            self.name_pretrained = name_pretrained
         else:
             self.name_pretrained = 'resnet34'
 
