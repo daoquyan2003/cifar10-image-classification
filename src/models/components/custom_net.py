@@ -17,7 +17,7 @@ class CustomNet(nn.Module):
         
         self.num_classes = num_classes
 
-        if img_pretrained is None:
+        if img_pretrained is not None:
             self.name_pretrained = img_pretrained
         else:
             self.name_pretrained = 'resnet34'
