@@ -22,6 +22,8 @@ class CustomNet(nn.Module):
         else:
             self.name_pretrained = 'resnet34'
 
+        print("Using", self.name_pretrained)
+
         self.backbone = models.get_model(name=self.name_pretrained, weights="DEFAULT")
         
         self.linear_layer = nn.Linear(1000, self.num_classes)
