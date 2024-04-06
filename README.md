@@ -6,7 +6,7 @@
 
 <br>
 
-## Introduction
+## Introduction
 
 - This is a simple personal project on CIFAR10 dataset which utilizes famous deep learning models for classifying images of 10 different classes.
 
