@@ -32,7 +32,7 @@ dependencies:
   - pytest=7.*
 
   # --------- loggers --------- #
-  # - wandb
+  - wandb
   # - neptune-client
   # - mlflow
   # - comet-ml
@@ -43,3 +43,5 @@ dependencies:
       - hydra-optuna-sweeper
       - hydra-colorlog
       - rootutils
+      - gradio
+      - matplotlib
