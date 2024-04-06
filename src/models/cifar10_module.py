@@ -4,10 +4,11 @@ import torch
 from lightning import LightningModule
 from torchmetrics import MaxMetric, MeanMetric
 from torchmetrics.classification.accuracy import Accuracy
+from torchmetrics.classification.f_beta import F1Score
 
 
-class MNISTLitModule(LightningModule):
-    """Example of a `LightningModule` for MNIST classification.
+class CIFAR10LitModule(LightningModule):
+    """The `LightningModule` for CIFAR10 classification.
 
     A `LightningModule` implements 8 key methods:
 
@@ -46,7 +47,7 @@ class MNISTLitModule(LightningModule):
         scheduler: torch.optim.lr_scheduler,
         compile: bool,
     ) -> None:
-        """Initialize a `MNISTLitModule`.
+        """Initialize a `CIFAR10LitModule`.
 
         :param net: The model to train.
         :param optimizer: The optimizer to use for training.
@@ -68,6 +69,10 @@ class MNISTLitModule(LightningModule):
         self.val_acc = Accuracy(task="multiclass", num_classes=10)
         self.test_acc = Accuracy(task="multiclass", num_classes=10)
 
+        self.train_f1 = F1Score(task="multiclass", num_classes=10)
+        self.val_f1 = F1Score(task="multiclass", num_classes=10)
+        self.test_f1 = F1Score(task="multiclass", num_classes=10)
+
         # for averaging loss across batches
         self.train_loss = MeanMetric()
         self.val_loss = MeanMetric()
@@ -75,6 +80,7 @@ class MNISTLitModule(LightningModule):
 
         # for tracking best so far validation accuracy
         self.val_acc_best = MaxMetric()
+        self.val_f1_best = MaxMetric()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Perform a forward pass through the model `self.net`.
@@ -91,6 +97,8 @@ class MNISTLitModule(LightningModule):
         self.val_loss.reset()
         self.val_acc.reset()
         self.val_acc_best.reset()
+        self.val_f1.reset()
+        self.val_f1_best.reset()
 
     def model_step(
         self, batch: Tuple[torch.Tensor, torch.Tensor]
@@ -125,8 +133,10 @@ class MNISTLitModule(LightningModule):
         # update and log metrics
         self.train_loss(loss)
         self.train_acc(preds, targets)
+        self.train_f1(preds, targets)
         self.log("train/loss", self.train_loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log("train/acc", self.train_acc, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("train/f1", self.train_f1, on_step=False, on_epoch=True, prog_bar=True)
 
         # return loss or backpropagation will fail
         return loss
@@ -147,16 +157,23 @@ class MNISTLitModule(LightningModule):
         # update and log metrics
         self.val_loss(loss)
         self.val_acc(preds, targets)
+        self.val_f1(preds, targets)
         self.log("val/loss", self.val_loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log("val/acc", self.val_acc, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("val/f1", self.val_f1, on_step=False, on_epoch=True, prog_bar=True)
+
+        return loss, preds, targets
 
     def on_validation_epoch_end(self) -> None:
         "Lightning hook that is called when a validation epoch ends."
         acc = self.val_acc.compute()  # get current val acc
+        f1 = self.val_f1.compute()
         self.val_acc_best(acc)  # update best so far val acc
+        self.val_f1_best(f1)
         # log `val_acc_best` as a value through `.compute()` method, instead of as a metric object
         # otherwise metric would be reset by lightning after each epoch
         self.log("val/acc_best", self.val_acc_best.compute(), sync_dist=True, prog_bar=True)
+        self.log("val/f1_best", self.val_f1_best.compute(), sync_dist=True, prog_bar=True)
 
     def test_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
         """Perform a single test step on a batch of data from the test set.
@@ -170,8 +187,12 @@ class MNISTLitModule(LightningModule):
         # update and log metrics
         self.test_loss(loss)
         self.test_acc(preds, targets)
+        self.test_f1(preds, targets)
         self.log("test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log("test/acc", self.test_acc, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("test/f1", self.test_f1, on_step=False, on_epoch=True, prog_bar=True)
+
+        return loss, preds, targets
 
     def on_test_epoch_end(self) -> None:
         """Lightning hook that is called when a test epoch ends."""
@@ -214,4 +235,4 @@ class MNISTLitModule(LightningModule):
 
 
 if __name__ == "__main__":
-    _ = MNISTLitModule(None, None, None, None)
+    _ = CIFAR10LitModule(None, None, None, None)

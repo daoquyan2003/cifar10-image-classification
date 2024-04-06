@@ -3,19 +3,22 @@ from typing import Any, Dict, Optional, Tuple
 import torch
 from lightning import LightningDataModule
 from torch.utils.data import ConcatDataset, DataLoader, Dataset, random_split
-from torchvision.datasets import MNIST
-from torchvision.transforms import transforms
+from torchvision.datasets import CIFAR10
+from torchvision.transforms import v2
 
 
-class MNISTDataModule(LightningDataModule):
-    """`LightningDataModule` for the MNIST dataset.
+class CIFAR10DataModule(LightningDataModule):
+    """`LightningDataModule` for the CIFAR10 dataset.
 
-    The MNIST database of handwritten digits has a training set of 60,000 examples, and a test set of 10,000 examples.
-    It is a subset of a larger set available from NIST. The digits have been size-normalized and centered in a
-    fixed-size image. The original black and white images from NIST were size normalized to fit in a 20x20 pixel box
-    while preserving their aspect ratio. The resulting images contain grey levels as a result of the anti-aliasing
-    technique used by the normalization algorithm. the images were centered in a 28x28 image by computing the center of
-    mass of the pixels, and translating the image so as to position this point at the center of the 28x28 field.
+    The CIFAR-10 dataset consists of 60000 32x32 colour images in 10 classes, with 6000 images per class. 
+    There are 50000 training images and 10000 test images.
+
+    The dataset is divided into five training batches and one test batch, each with 10000 images. The test 
+    batch contains exactly 1000 randomly-selected images from each class. The training batches contain the 
+    remaining images in random order, but some training batches may contain more images from one class than 
+    another. Between them, the training batches contain exactly 5000 images from each class.
+
+    The classes are completely mutually exclusive.
 
     A `LightningDataModule` implements 7 key methods:
 
@@ -45,9 +48,6 @@ class MNISTDataModule(LightningDataModule):
         # Clean up after fit or test.
     ```
 
-    This allows you to share a full dataset without explaining how to download,
-    split, transform and process the data.
-
     Read the docs:
         https://lightning.ai/docs/pytorch/latest/data/datamodule.html
     """
@@ -55,15 +55,15 @@ class MNISTDataModule(LightningDataModule):
     def __init__(
         self,
         data_dir: str = "data/",
-        train_val_test_split: Tuple[int, int, int] = (55_000, 5_000, 10_000),
+        train_val_test_split: Tuple[int, int, int] = (45_000, 5_000, 10_000),
         batch_size: int = 64,
         num_workers: int = 0,
         pin_memory: bool = False,
     ) -> None:
-        """Initialize a `MNISTDataModule`.
+        """Initialize a `CIFAR10DataModule`.
 
         :param data_dir: The data directory. Defaults to `"data/"`.
-        :param train_val_test_split: The train, validation and test split. Defaults to `(55_000, 5_000, 10_000)`.
+        :param train_val_test_split: The train, validation and test split. Defaults to `(45_000, 5_000, 10_000)`.
         :param batch_size: The batch size. Defaults to `64`.
         :param num_workers: The number of workers. Defaults to `0`.
         :param pin_memory: Whether to pin memory. Defaults to `False`.
@@ -75,9 +75,15 @@ class MNISTDataModule(LightningDataModule):
         self.save_hyperparameters(logger=False)
 
         # data transformations
-        self.transforms = transforms.Compose(
-            [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
-        )
+        self.transforms = v2.Compose(
+            [v2.ToImage(),
+             v2.RandomHorizontalFlip(p=0.5),
+             v2.RandomVerticalFlip(p=0.5),
+             v2.RandomRotation(degrees=20),
+            #  v2.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
+             v2.ToDtype(torch.float32, scale=True),
+             v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ])
 
         self.data_train: Optional[Dataset] = None
         self.data_val: Optional[Dataset] = None
@@ -89,7 +95,7 @@ class MNISTDataModule(LightningDataModule):
     def num_classes(self) -> int:
         """Get the number of classes.
 
-        :return: The number of MNIST classes (10).
+        :return: The number of CIFAR10 classes (10).
         """
         return 10
 
@@ -101,8 +107,8 @@ class MNISTDataModule(LightningDataModule):
 
         Do not use it to assign state (self.x = y).
         """
-        MNIST(self.hparams.data_dir, train=True, download=True)
-        MNIST(self.hparams.data_dir, train=False, download=True)
+        CIFAR10(self.hparams.data_dir, train=True, download=True)
+        CIFAR10(self.hparams.data_dir, train=False, download=True)
 
     def setup(self, stage: Optional[str] = None) -> None:
         """Load data. Set variables: `self.data_train`, `self.data_val`, `self.data_test`.
@@ -124,8 +130,8 @@ class MNISTDataModule(LightningDataModule):
 
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
-            trainset = MNIST(self.hparams.data_dir, train=True, transform=self.transforms)
-            testset = MNIST(self.hparams.data_dir, train=False, transform=self.transforms)
+            trainset = CIFAR10(self.hparams.data_dir, train=True, transform=self.transforms)
+            testset = CIFAR10(self.hparams.data_dir, train=False, transform=self.transforms)
             dataset = ConcatDataset(datasets=[trainset, testset])
             self.data_train, self.data_val, self.data_test = random_split(
                 dataset=dataset,
@@ -198,4 +204,4 @@ class MNISTDataModule(LightningDataModule):
 
 
 if __name__ == "__main__":
-    _ = MNISTDataModule()
+    _ = CIFAR10DataModule()
