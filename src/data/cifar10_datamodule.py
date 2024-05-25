@@ -55,7 +55,7 @@ class CIFAR10DataModule(LightningDataModule):
     def __init__(
         self,
         data_dir: str = "data/",
-        train_val_test_split: Tuple[int, int, int] = (45_000, 5_000, 10_000),
+        train_val_split: Tuple[int, int, int] = (45_000, 5_000),
         batch_size: int = 64,
         num_workers: int = 0,
         pin_memory: bool = False,
@@ -79,11 +79,17 @@ class CIFAR10DataModule(LightningDataModule):
             [v2.ToImage(),
              v2.RandomHorizontalFlip(p=0.5),
              v2.RandomVerticalFlip(p=0.5),
-             v2.RandomRotation(degrees=20),
+             v2.RandomRotation(degrees=(0, 10)),
             #  v2.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
              v2.ToDtype(torch.float32, scale=True),
              v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ])
+
+        self.test_transforms = v2.Compose(
+            [v2.ToImage(),
+             v2.ToDtype(torch.float32, scale=True),
+             v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])]
+        )
 
         self.data_train: Optional[Dataset] = None
         self.data_val: Optional[Dataset] = None
@@ -131,11 +137,11 @@ class CIFAR10DataModule(LightningDataModule):
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
             trainset = CIFAR10(self.hparams.data_dir, train=True, transform=self.transforms)
-            testset = CIFAR10(self.hparams.data_dir, train=False, transform=self.transforms)
-            dataset = ConcatDataset(datasets=[trainset, testset])
-            self.data_train, self.data_val, self.data_test = random_split(
-                dataset=dataset,
-                lengths=self.hparams.train_val_test_split,
+            self.data_test = CIFAR10(self.hparams.data_dir, train=False, transform=self.test_transforms)
+            # dataset = ConcatDataset(datasets=[trainset, testset])
+            self.data_train, self.data_val = random_split(
+                dataset=trainset,
+                lengths=self.hparams.train_val_split,
                 generator=torch.Generator().manual_seed(42),
             )
 
@@ -172,7 +178,8 @@ class CIFAR10DataModule(LightningDataModule):
         """
         return DataLoader(
             dataset=self.data_test,
-            batch_size=self.batch_size_per_device,
+            # batch_size=self.batch_size_per_device,
+            batch_size=1,
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
             shuffle=False,
